@@ -1,5 +1,5 @@
 # docker_vpn
-
+Modified version of Christophs repo to work with `docker-compose`
 Run openconnect VPN client inside a Docker container.
 
 This allows one to share the same VPN connection between (many) different containers.
@@ -10,39 +10,29 @@ This allows one to share the same VPN connection between (many) different contai
 
 2. Start VPN Container:
 
-```shell
-> docker run -d --privileged --name myvpn --env-file .env cblessing24/vpn:0.1
+`docker-compose build vpn`
+
+`docker-compose run --name konsti_vpn -d vpn`
+
+3. Modify docker-compose of your development/production container to contain this line:
+
+`network_mode: container:konsti_vpn`
+
+full example of a production service in docker-compose
 ```
-
-3. Start your Containers:
-
-```shell
-> docker run --net container:myvpn --name mycontainer myimage
-> docker run --net container:myvpn --name myothercontainer myimage
-> ...
-```
-
-The important part here is `--net container:myvpn`. This option tells Docker to reuse the network stack of the `myvpn` container.
-
-### docker-compose
-
-Here is the same example using docker-compose:
-
-```yml
-version: "3.9"
 services:
-  vpn:
-    image: cblessing24/vpn:0.1
-    privileged: true
-    name: myvpn
-    env_file:
-      - .env
-  myservice:
-    image: myimage
-    network_mode: "container:myvpn"
-    name: mycontainer
-  myotherservice:
-    image: myimage
-    network_mode: "container:myvpn"
-    name: myothercontainer
+    gpu-server_production:
+        privileged: true
+        network_mode: container:konsti_vpn    # this line has to mention the container above
+        build: .
+        volumes:
+          - /some:/mapping
+        env_file: .env
+        environment:
+          - DISPLAY=$DISPLAY
+        runtime: nvidia
+        entrypoint: /usr/local/bin/python3
+        command: run.py                     # now we dont need the vpn.sh script, but only the .py
 ```
+
+4. Start your develop/production containers with docker-compose run just as before.
